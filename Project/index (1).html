@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Delivery Route Optimizer</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f7fb;--card:#fff;--text:#14213d;--muted:#5b6478;--line:#d5dcea;--accent:#0b6bcb;--route:#e4572e;--alt:#7c5cff;--good:#1a936f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0e1420;--card:#171f30;--text:#e8edf7;--muted:#9aa5bd;--line:#2a3550;--accent:#5aa8ff;--route:#ff8a5c;--alt:#a58bff;--good:#4cd4a0}}
+:root[data-theme="dark"]{--bg:#0e1420;--card:#171f30;--text:#e8edf7;--muted:#9aa5bd;--line:#2a3550;--accent:#5aa8ff;--route:#ff8a5c;--alt:#a58bff;--good:#4cd4a0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.55}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px 40px}
+.hero{position:relative;overflow:hidden;margin:16px 0 18px;padding:26px 22px 44px;border-radius:18px;color:#fff;background:linear-gradient(135deg,#0b6bcb,#7c5cff)}
+.hero h1{font-size:clamp(1.7rem,5vw,2.4rem);margin:0 0 4px;line-height:1.1}
+.hero p{margin:0;opacity:.92}
+.road{position:absolute;left:0;right:0;bottom:12px;height:3px;background:repeating-linear-gradient(90deg,#ffffffaa 0 16px,transparent 16px 30px)}
+.truck{position:absolute;bottom:14px;font-size:28px;animation:drive 8s linear infinite;transform:scaleX(-1)}
+@keyframes drive{from{left:-50px}to{left:100%}}
+#gear{position:absolute;top:14px;right:14px;background:#ffffff33;color:#fff;border:0;border-radius:999px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}
+.sgrid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+fieldset{border:0;padding:0;margin:0}legend{font-weight:700;margin-bottom:4px;padding:0}
+fieldset label{display:block;padding:4px 0;cursor:pointer}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,30px);background:var(--text);color:var(--card);padding:10px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:.3s;z-index:20;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.tiles{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.tile{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px}
+.tile b{display:block;font-size:1.6rem;color:var(--good)}
+.dash .tile b{color:var(--text);font-size:1.9rem}
+.app{display:flex;min-height:100vh}
+.side{width:224px;flex:none;background:var(--card);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px}
+.brand{font-weight:800;font-size:1.05rem;padding:6px 10px 14px;display:flex;gap:8px;align-items:center;line-height:1.2}
+#nav{display:flex;flex-direction:column;gap:4px}
+#nav a{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;color:var(--text);text-decoration:none;font-weight:600;transition:background .2s}
+#nav a:hover{background:var(--bg)}#nav a.on{background:var(--accent);color:#fff}
+.credit{margin-top:auto;padding:10px}
+.main{flex:1;min-width:0;padding:22px 24px 40px;max-width:1000px}
+.main h1{font-size:1.6rem;margin:0 0 16px}
+.bd{padding:2px 10px;border-radius:999px;font-size:.8rem;font-weight:600;white-space:nowrap}
+.bd.ok{background:#1a936f26;color:var(--good)}.bd.pr{background:#e4572e26;color:var(--route)}.bd.pe{background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+@media (max-width:760px){.app{flex-direction:column}.side{width:100%;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center;border-right:0;border-bottom:1px solid var(--line);padding:10px}.brand{width:100%;padding:4px 6px}#nav{flex-direction:row;flex-wrap:wrap}#nav a{padding:8px 10px}.credit{display:none}.main{padding:16px 14px 40px}}
+h2{font-size:1.1rem;margin:0 0 10px}
+.muted{color:var(--muted)}.small{font-size:.88rem}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px;animation:up .5s ease both}
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.step{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;font-size:.85rem;margin-right:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chip{border:2px solid var(--line);background:var(--card);color:var(--text);border-radius:999px;padding:8px 18px;font:inherit;font-weight:600;cursor:pointer;transition:transform .15s,background .2s}
+.chip:hover{transform:translateY(-2px) scale(1.05)}
+.chip.on{background:var(--route);border-color:var(--route);color:#fff}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+select,input[type=number]{font:inherit;padding:8px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--text)}
+input[type=number]{width:70px}
+button.sec{border:1px solid var(--accent);color:var(--accent);background:transparent;border-radius:9px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}
+button.go{width:100%;background:var(--accent);color:#fff;border:0;border-radius:12px;padding:14px;font:inherit;font-size:1.05rem;font-weight:700;cursor:pointer;transition:transform .15s,box-shadow .2s}
+button.go:hover{transform:translateY(-2px);box-shadow:0 8px 20px #0b6bcb44}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{border:0;background:var(--card);color:var(--text);padding:7px 14px;font:inherit;cursor:pointer}
+.seg button.on{background:var(--accent);color:#fff}
+.big{font-size:2rem;font-weight:800;color:var(--good)}
+svg{width:100%;height:auto;display:block;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.pop{animation:pop .5s ease;transform-box:fill-box;transform-origin:center}
+@keyframes pop{50%{transform:scale(1.35)}}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.93rem}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.cf{position:fixed;top:-20px;width:9px;height:14px;z-index:9;animation:fall 2.4s linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+ol{padding-left:20px;margin:6px 0}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion:reduce){.truck,.card,.pop,.cf{animation:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+  <div class="brand">🚚 <span>Delivery Route Optimizer</span></div>
+  <nav id="nav">
+    <a href="#" data-p="dashboard">🏠 <span>Dashboard</span></a>
+    <a href="#" data-p="optimizer">📍 <span>Route Optimizer</span></a>
+    <a href="#" data-p="deliveries">🚚 <span>Deliveries</span></a>
+    <a href="#" data-p="history">🕘 <span>History</span></a>
+    <a href="#" data-p="settings">⚙ <span>Settings</span></a>
+  </nav>
+  <p class="muted small credit">DSA-3 (25CS2103E)<br>Challa Goutham Teja<br>Immella Vikram<br>Guide: Mrs. Ch. Anitha</p>
+</aside>
+<main class="main">
+
+<section class="page" id="p-dashboard">
+  <h1>Today's Overview</h1>
+  <div class="tiles dash" style="margin-bottom:16px">
+    <div class="tile"><span class="muted small">Deliveries</span><b id="dDel">0</b></div>
+    <div class="tile"><span class="muted small">Completed</span><b id="dComp">0</b></div>
+    <div class="tile"><span class="muted small">Distance</span><b id="dKm">0 km</b></div>
+    <div class="tile"><span class="muted small">Time Saved</span><b id="dMin">0 min</b></div>
+  </div>
+  <div class="card">
+    <h2>Recent Routes</h2>
+    <p class="muted small" id="rrNone" style="margin:0">No routes yet. <a href="#" data-go="optimizer" style="color:var(--accent);font-weight:600">Plan your first route →</a></p>
+    <div class="tw"><table id="rrTable" hidden><thead><tr><th>Route</th><th>Stops</th><th>Distance</th><th>Status</th></tr></thead><tbody id="rrb"></tbody></table></div>
+  </div>
+  <div class="card">
+    <h2>How does it work?</h2>
+    <ol>
+      <li>Places are dots and roads are lines with a length: a <b>graph</b> stored as an <b>adjacency list</b>.</li>
+      <li><b>Dijkstra's algorithm</b> with a <b>min-heap (priority queue)</b> finds the shortest path, always picking the closest unvisited place next.</li>
+      <li>The van goes to the <b>nearest remaining stop</b> each time; the result is compared with a simple A, B, C order.</li>
+    </ol>
+  </div>
+</section>
+
+<section class="page" id="p-optimizer" hidden>
+  <h1>Route Optimizer</h1>
+  <div class="card">
+    <h2><span class="step">1</span>Pick the places that need a delivery</h2>
+    <p class="muted small" style="margin:0">Tap a place to select or unselect it. Orange means "deliver here".</p>
+    <div class="chips" id="chips"></div>
+    <label class="small"><input type="checkbox" id="ret"> The van must return to the depot at the end</label>
+  </div>
+  <div class="card">
+    <h2><span class="step">2</span>Add stops anywhere on the map <span class="muted small">(optional)</span></h2>
+    <p class="muted small" style="margin:0 0 8px">Click any empty spot on the map to place a new stop there. It is joined to the 2 nearest places and the distance is worked out from the map. Click an existing place to select or unselect it.</p>
+    <div id="setup"></div>
+    <div class="row" style="margin-top:8px">
+      <button class="sec" id="undo">↩ Undo last stop</button>
+      <button class="sec" id="reset" style="border-color:var(--line);color:var(--muted)">Reset map</button>
+    </div>
+    <p class="small" id="addmsg" style="margin:8px 0 0;color:var(--good)"></p>
+  </div>
+  <div class="card">
+    <h2><span class="step">3</span>Find the best route</h2>
+    <button class="go" id="run">Find best route 🚀</button>
+  </div>
+  <div id="out" hidden>
+    <div class="card">
+      <h2><span class="step">4</span>Result</h2>
+      <p style="font-size:1.1rem">Best order: <b id="best"></b></p>
+      <p style="margin:0">Total distance</p><div class="big" id="tot">0 km</div><p class="small muted" id="time" style="margin:0"></p>
+      <p id="cmp"></p>
+    </div>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+        <h2 style="margin:0">Live map</h2>
+        <div class="row">
+          <div class="seg"><button data-v="opt" class="on">Best route</button><button data-v="naive">Simple order</button></div>
+          <button class="sec" id="replay">▶ Start delivery</button>
+        </div>
+      </div>
+      <div id="map"></div>
+      <p class="small muted" style="margin:8px 0 0"><b id="prog"></b> · Blue = depot, orange = stops, numbers on roads = <span id="un">km</span></p>
+    </div>
+    <div class="card">
+      <h2>Trip, leg by leg</h2>
+      <div class="tw"><table><thead><tr><th>From → To</th><th>Distance</th><th>Time</th><th>Roads taken</th></tr></thead><tbody id="legs"></tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<section class="page" id="p-deliveries" hidden>
+  <h1>Deliveries</h1>
+  <div class="card">
+    <p class="muted small" id="dlNone" style="margin:0">No deliveries today. Plan a route in the Route Optimizer and press Start delivery.</p>
+    <div class="tw"><table id="dlt" hidden><thead><tr><th>Route</th><th>Order</th><th>Stop</th><th>Status</th></tr></thead><tbody id="dlb"></tbody></table></div>
+  </div>
+</section>
+
+<section class="page" id="p-history" hidden>
+  <h1>History</h1>
+  <div class="card" id="savebox">
+    <h2>💰 Total savings</h2>
+    <div class="tiles">
+      <div class="tile"><span class="muted small">Total distance saved</span><b id="tKm">0 km</b></div>
+      <div class="tile"><span class="muted small">Total time saved</span><b id="tMin">0 min</b></div>
+      <div class="tile"><span class="muted small">Routes optimized</span><b id="tN">0</b></div>
+    </div>
+    <p class="muted small" style="margin:8px 0 0">Compared with visiting the same stops in the simple A, B, C order. Adds up every route in your history.</p>
+  </div>
+  <div class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 style="margin:0">🕘 Route history</h2><button class="sec" id="clr">Clear history</button></div>
+    <p class="muted small" id="hnone" style="margin:0">No routes yet. Click "Find best route" to start.</p>
+    <div class="tw"><table id="ht" hidden><thead><tr><th>Route</th><th>When</th><th>Path</th><th>Distance</th><th>Est. time</th><th>Distance saved</th><th>Time saved</th><th>Status</th></tr></thead><tbody id="hb"></tbody></table></div>
+  </div>
+</section>
+
+<section class="page" id="p-settings" hidden>
+  <h1>Settings</h1>
+  <div class="card">
+    <div class="sgrid">
+      <fieldset><legend>Appearance</legend>
+        <label><input type="radio" name="theme" value="light"> Light</label>
+        <label><input type="radio" name="theme" value="dark"> Dark</label></fieldset>
+      <fieldset><legend>Distance Unit</legend>
+        <label><input type="radio" name="unit" value="km" checked> Kilometers</label>
+        <label><input type="radio" name="unit" value="mi"> Miles</label></fieldset>
+      <fieldset><legend>Route Preference</legend>
+        <label><input type="radio" name="pref" value="dist" checked> Shortest Distance</label>
+        <label><input type="radio" name="pref" value="time"> Minimum Time</label></fieldset>
+      <fieldset><legend>Notifications</legend>
+        <label><input type="checkbox" id="nDone" checked> Route completed</label>
+        <label><input type="checkbox" id="nOpt" checked> Optimization completed</label></fieldset>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+class MinHeap{constructor(){this.a=[]}get size(){return this.a.length}
+ push(p,v){const a=this.a;a.push([p,v]);let i=a.length-1;while(i>0){const j=(i-1)>>1;if(a[j][0]<=a[i][0])break;[a[i],a[j]]=[a[j],a[i]];i=j}}
+ pop(){const a=this.a,t=a[0],l=a.pop();if(a.length){a[0]=l;let i=0;for(;;){let x=2*i+1,y=x+1,m=i;if(x<a.length&&a[x][0]<a[m][0])m=x;if(y<a.length&&a[y][0]<a[m][0])m=y;if(m===i)break;[a[i],a[m]]=[a[m],a[i]];i=m}}return t}}
+
+let N,E,adj,stops,res=null,view='opt',raf=0,unit='km',pref='dist',hist=[],curR=null;
+const $=id=>document.getElementById(id),css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim(),nm=i=>N[i].n;
+function load(){N=[{n:'Depot',x:70,y:200},{n:'A',x:210,y:80},{n:'B',x:390,y:60},{n:'C',x:210,y:330},{n:'D',x:390,y:340},{n:'E',x:610,y:200}];
+ E=[[0,1,4,30],[0,3,7,70],[1,2,5,50],[3,4,5,70],[1,3,6,30],[2,3,8,80],[2,5,6,40],[4,5,4,30]];stops=new Set([1,2,3,4,5]);res=null;cancelAnimationFrame(raf);rebuild()}
+const wt=e=>pref==='time'?e[2]/e[3]*60:e[2];
+function rebuild(){adj=N.map(()=>[]);E.forEach(e=>{const w=wt(e);adj[e[0]].push([e[1],w]);adj[e[1]].push([e[0],w])})}
+const eOf=(u,v)=>E.find(e=>(e[0]===u&&e[1]===v)||(e[0]===v&&e[1]===u));
+const num=km=>unit==='mi'?(km*0.621371).toFixed(1):km;
+const fmt=km=>unit==='mi'?(km*0.621371).toFixed(1)+' mi':Math.round(km*10)/10+' km';
+const fmtT=m=>{m=Math.round(m);return m>=60?Math.floor(m/60)+' h '+(m%60)+' min':m+' min'};
+function metrics(pa){let k=0,m=0;for(let i=1;i<pa.length;i++){const e=eOf(pa[i-1],pa[i]);k+=e[2];m+=e[2]/e[3]*60}return{km:k,min:m}}
+function toast(msg,key){if(!$(key).checked)return;const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3200)}
+function dijkstra(s){const d=Array(N.length).fill(Infinity),p=Array(N.length).fill(-1);d[s]=0;const q=new MinHeap();q.push(0,s);
+ while(q.size){const[x,u]=q.pop();if(x>d[u])continue;for(const[v,w]of adj[u])if(x+w<d[v]){d[v]=x+w;p[v]=u;q.push(d[v],v)}}return{d,p}}
+const pathTo=(p,t)=>{const r=[];for(let v=t;v!==-1;v=p[v])r.unshift(v);return r};
+function build(order,back){let cur=0,total=0,tk=0,tm=0,full=[0],legs=[];
+ for(const t of back?[...order,0]:order){const{d,p}=dijkstra(cur),pa=pathTo(p,t),m=metrics(pa);total+=d[t];tk+=m.km;tm+=m.min;full.push(...pa.slice(1));legs.push({from:cur,to:t,km:m.km,min:m.min,pa});cur=t}
+ return{order,total,tk,tm,full,legs}}
+function nearest(){const rem=new Set(stops),o=[];let c=0;while(rem.size){const{d}=dijkstra(c);let b=null;for(const s of rem)if(b===null||d[s]<d[b])b=s;o.push(b);rem.delete(b);c=b}return o}
+
+function chips(){$('chips').innerHTML='';N.forEach((n,i)=>{if(!i)return;const b=document.createElement('button');b.className='chip'+(stops.has(i)?' on':'');b.textContent='Place '+n.n;
+ b.onclick=()=>{stops.has(i)?stops.delete(i):stops.add(i);chips();setup()};$('chips').appendChild(b)})}
+function roads(){setup();renderHist()}
+function setup(){const T=css('--text'),L=css('--line'),A=css('--accent'),R=css('--route'),M=css('--muted'),C=css('--card');
+ let s=`<svg id="sv" viewBox="0 0 700 400" style="cursor:crosshair" role="img" aria-label="Click to add a stop">`;
+ E.forEach(([a,b])=>s+=`<line x1="${N[a].x}" y1="${N[a].y}" x2="${N[b].x}" y2="${N[b].y}" stroke="${L}" stroke-width="3"/>`);
+ E.forEach(([a,b,w])=>{const mx=(N[a].x+N[b].x)/2,my=(N[a].y+N[b].y)/2;s+=`<rect x="${mx-19}" y="${my-11}" width="38" height="22" rx="6" fill="${C}" stroke="${L}"/><text x="${mx}" y="${my+5}" text-anchor="middle" font-size="13" fill="${M}">${num(w)}</text>`});
+ N.forEach((n,i)=>{const dep=!i,st=stops.has(i),f=dep?A:st?R:C;
+  s+=`<circle cx="${n.x}" cy="${n.y}" r="22" fill="${f}" stroke="${dep||st?f:M}" stroke-width="2.5"/><text x="${n.x}" y="${n.y+5}" text-anchor="middle" font-size="14" font-weight="700" fill="${dep||st?'#fff':T}">${dep?'D':n.n}</text>`});
+ $('setup').innerHTML=s+'</svg>'}
+$('setup').onclick=e=>{const sv=$('sv');if(!sv)return;const b=sv.getBoundingClientRect(),x=(e.clientX-b.left)*700/b.width,y=(e.clientY-b.top)*400/b.height;
+ const near=N.findIndex(n=>Math.hypot(n.x-x,n.y-y)<30);
+ if(near>0){stops.has(near)?stops.delete(near):stops.add(near);chips();setup();return}
+ if(near===0)return;
+ if(N.length>=14){$('addmsg').textContent='Maximum number of stops reached.';return}
+ const px=Math.max(30,Math.min(670,x)),py=Math.max(30,Math.min(370,y)),id=N.length,nn=String.fromCharCode(64+id);
+ const ds=N.map((n,i)=>[Math.max(1,Math.round(Math.hypot(n.x-px,n.y-py)/45)),i,Math.hypot(n.x-px,n.y-py)]).sort((a,b)=>a[2]-b[2]).slice(0,2);
+ N.push({n:nn,x:px,y:py});ds.forEach(([k,i])=>E.push([i,id,k,50]));stops.add(id);rebuild();chips();setup();res=null;$('out').hidden=true;cancelAnimationFrame(raf);
+ $('addmsg').textContent=`Added stop ${nn}, connected to ${ds.map(([k,i])=>nm(i)+' ('+fmt(k)+')').join(' and ')}. It is selected as a delivery stop.`};
+$('undo').onclick=()=>{if(N.length<=6){$('addmsg').textContent='No added stops to undo.';return}const id=N.length-1;N.pop();E=E.filter(e=>e[0]!==id&&e[1]!==id);stops.delete(id);rebuild();chips();setup();res=null;$('out').hidden=true;cancelAnimationFrame(raf);$('addmsg').textContent=`Removed stop ${String.fromCharCode(64+id)}.`};
+try{hist=JSON.parse(localStorage.getItem('rh2')||'[]')}catch(e){hist=[]}
+function saveH(){try{localStorage.setItem('rh2',JSON.stringify(hist))}catch(e){}}
+const sg=(v,f)=>(v<-1e-9?'−':'')+f(Math.abs(v));
+const cls={Completed:'ok',Delivered:'ok','In Progress':'pr','On the way':'pr'},stc=x=>`<span class="bd ${cls[x]||'pe'}">${x}</span>`;
+function renderHist(){const tk=hist.reduce((a,h)=>a+h.sk,0),tm=hist.reduce((a,h)=>a+h.sm,0);
+ $('tKm').textContent=sg(tk,fmt);$('tMin').textContent=sg(tm,fmtT);$('tN').textContent=hist.length;
+ $('ht').hidden=!hist.length;$('hnone').hidden=!!hist.length;
+ $('hb').innerHTML=hist.slice().reverse().map(h=>`<tr><td>#${h.id}</td><td>${h.t}</td><td>${h.r}</td><td>${fmt(h.k)}</td><td>${fmtT(h.m)}</td><td>${sg(h.sk,fmt)}</td><td>${sg(h.sm,fmtT)}</td><td>${stc(h.st)}</td></tr>`).join('')}
+function renderDash(){const td=new Date().toDateString(),T=hist.filter(h=>h.day===td),S=f=>T.reduce((a,h)=>a+f(h),0);
+ $('dDel').textContent=S(h=>h.n);$('dComp').textContent=S(h=>h.dn.length);$('dKm').textContent=fmt(S(h=>h.k));$('dMin').textContent=sg(S(h=>h.sm),fmtT);
+ const R=hist.slice(-5).reverse();$('rrNone').hidden=!!R.length;$('rrTable').hidden=!R.length;
+ $('rrb').innerHTML=R.map(h=>`<tr><td>Route #${h.id}</td><td>${h.n}</td><td>${fmt(h.k)}</td><td>${stc(h.st)}</td></tr>`).join('')}
+function renderDel(){const td=new Date().toDateString(),rows=hist.filter(h=>h.day===td).reverse().flatMap(h=>h.ord.map((s,i)=>{const st=h.dn.includes(s)?'Delivered':h.st==='In Progress'?'On the way':'Pending';return`<tr><td>Route #${h.id}</td><td>${i+1}</td><td>Place ${s}</td><td>${stc(st)}</td></tr>`}));
+ $('dlNone').hidden=!!rows.length;$('dlt').hidden=!rows.length;$('dlb').innerHTML=rows.join('')}
+function showPage(p){document.querySelectorAll('.page').forEach(x=>x.hidden=x.id!=='p-'+p);
+ document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.p===p));
+ if(p==='dashboard')renderDash();if(p==='deliveries')renderDel();if(p==='history')renderHist();if(p==='optimizer')setup();window.scrollTo(0,0)}
+$('clr').onclick=()=>{hist=[];saveH();renderHist()};
+$('reset').onclick=()=>{load();chips();roads();$('out').hidden=true;$('addmsg').textContent='Map reset.'};
+
+function map(){const r=res[view],T=css('--text'),L=css('--line'),A=css('--accent'),R=css('--route'),Al=css('--alt'),M=css('--muted'),C=css('--card'),col=view==='opt'?R:Al;
+ let s=`<svg viewBox="0 0 700 400" role="img" aria-label="Route map">`;
+ E.forEach(([a,b])=>s+=`<line x1="${N[a].x}" y1="${N[a].y}" x2="${N[b].x}" y2="${N[b].y}" stroke="${L}" stroke-width="3"/>`);
+ s+=`<polyline id="rt" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" points="${r.full.map(i=>N[i].x+','+N[i].y).join(' ')}"/>`;
+ E.forEach(([a,b,w])=>{const mx=(N[a].x+N[b].x)/2,my=(N[a].y+N[b].y)/2;s+=`<rect x="${mx-19}" y="${my-11}" width="38" height="22" rx="6" fill="${C}" stroke="${L}"/><text x="${mx}" y="${my+5}" text-anchor="middle" font-size="13" fill="${M}">${num(w)}</text>`});
+ N.forEach((n,i)=>{const dep=!i,st=stops.has(i),k=r.order.indexOf(i),f=dep?A:st?R:C;
+  s+=`<circle id="n${i}" cx="${n.x}" cy="${n.y}" r="22" fill="${f}" stroke="${dep||st?f:M}" stroke-width="2.5"/><text x="${n.x}" y="${n.y+5}" text-anchor="middle" font-size="14" font-weight="700" fill="${dep||st?'#fff':T}">${dep?'D':n.n}</text>`;
+  if(k>=0)s+=`<circle id="bc${i}" cx="${n.x+20}" cy="${n.y-20}" r="11" fill="${T}"/><text id="bt${i}" x="${n.x+20}" y="${n.y-16}" text-anchor="middle" font-size="12" font-weight="700" fill="${C}">${k+1}</text>`});
+ $('map').innerHTML=s+`<text id="van" font-size="28" text-anchor="middle" dominant-baseline="central">🚚</text></svg>`}
+
+function play(go){cancelAnimationFrame(raf);map();if(!go){const d0=N[0];$('van').setAttribute('transform',`translate(${d0.x},${d0.y})`);$('prog').textContent='Route ready. Press ▶ Start delivery.';return}
+ const r=res[view],pts=r.full.map(i=>[N[i].x,N[i].y]),cum=[0];
+ for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+ const len=cum[cum.length-1],rt=$('rt'),van=$('van'),arrive=new Map(),n=r.order.length,done=new Set();
+ r.full.forEach((v,i)=>{if(v&&!arrive.has(v))arrive.set(v,cum[i])});
+ rt.style.strokeDasharray=len;const dur=matchMedia('(prefers-reduced-motion:reduce)').matches?1:Math.min(10000,Math.max(4000,len*10)),t0=performance.now();
+ $('prog').textContent=`Delivered 0 / ${n}`;if(curR){curR.st='In Progress';curR.dn=[];saveH()}
+ (function frame(now){const k=Math.min(1,(now-t0)/dur),d=k*len;rt.style.strokeDashoffset=len-d;
+  let i=1;while(i<cum.length-1&&cum[i]<d)i++;
+  const f=(d-cum[i-1])/((cum[i]-cum[i-1])||1),dx=pts[i][0]-pts[i-1][0];
+  van.setAttribute('transform',`translate(${pts[i-1][0]+dx*f},${pts[i-1][1]+(pts[i][1]-pts[i-1][1])*f}) scale(${dx>0?-1:1},1)`);
+  arrive.forEach((at,v)=>{if(d>=at-.5&&!done.has(v)&&r.order.includes(v)){done.add(v);if(curR)curR.dn.push(nm(v));$('bc'+v).setAttribute('fill',css('--good'));$('bt'+v).textContent='✓';$('n'+v).classList.add('pop');$('prog').textContent=`Delivered ${done.size} / ${n}`}});
+  if(k<1)raf=requestAnimationFrame(frame);else{$('prog').textContent=`All ${n} deliveries done! 🎉`;if(curR){curR.st='Completed';saveH()}confetti();toast(`Route completed: all ${n} deliveries delivered 🚚`,'nDone')}})(t0)}
+function confetti(){if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;const c=['#e4572e','#0b6bcb','#1a936f','#f2b632','#7c5cff'];
+ for(let i=0;i<40;i++){const d=document.createElement('div');d.className='cf';d.style.left=Math.random()*100+'vw';d.style.background=c[i%5];d.style.animationDelay=Math.random()*.6+'s';document.body.appendChild(d);setTimeout(()=>d.remove(),3400)}}
+function countUp(to){const t0=performance.now();(function f(n){const k=Math.min(1,(n-t0)/900);$('tot').textContent=fmt(to*k);if(k<1)requestAnimationFrame(f)})(t0)}
+function legs(){$('legs').innerHTML=res[view].legs.map(l=>`<tr><td>${nm(l.from)} → ${nm(l.to)}</td><td>${fmt(l.km)}</td><td>${fmtT(l.min)}</td><td>${l.pa.map(nm).join(' → ')}</td></tr>`).join('')}
+
+function optimize(first){if(!stops.size){alert('Please select at least one place to deliver to.');return}
+ const back=$('ret').checked,o=nearest(),opt=build(o,back),nv=build([...stops].sort((a,b)=>a-b),back);res={opt,naive:nv};view='opt';
+ document.querySelectorAll('[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v==='opt'));
+ $('best').textContent=['Depot',...o.map(nm),...(back?['Depot']:[])].join(' → ');countUp(opt.tk);$('time').textContent='Estimated time: '+fmtT(opt.tm)+' · optimized for '+(pref==='time'?'minimum time':'shortest distance');
+ const sv=nv.total-opt.total,f=pref==='time'?fmtT:fmt;
+ $('cmp').innerHTML=sv>0.01?`A simple order (${['Depot',...nv.order.map(nm)].join(' → ')}) takes <b>${f(nv.total)}</b>, so this saves <b style="color:var(--good)">${f(sv)}</b>.`:`For these stops, the simple order (${f(nv.total)}) is just as good.`;
+ $('out').hidden=false;legs();play(false);if(first){$('out').scrollIntoView({behavior:'smooth'});toast('Optimization completed: best route found ✅','nOpt');
+ const dt=new Date();curR={id:hist.length?hist[hist.length-1].id+1:101,day:dt.toDateString(),t:dt.toLocaleDateString([],{day:'numeric',month:'short'})+' '+dt.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),r:$('best').textContent,k:opt.tk,m:opt.tm,sk:nv.tk-opt.tk,sm:nv.tm-opt.tm,n:opt.order.length,ord:opt.order.map(nm),dn:[],st:'Pending'};
+ hist.push(curR);if(hist.length>50)hist.shift();saveH();renderHist()}}
+$('run').onclick=()=>optimize(true);
+document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{view=b.dataset.v;document.querySelectorAll('[data-v]').forEach(x=>x.classList.toggle('on',x===b));legs();play(false)});
+$('replay').onclick=()=>res&&play(true);
+document.querySelectorAll('#nav a,[data-go]').forEach(a=>a.onclick=e=>{e.preventDefault();showPage(a.dataset.p||a.dataset.go)});
+document.querySelector('[name=theme][value='+(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light')+']').checked=true;
+document.querySelectorAll('[name=theme]').forEach(r=>r.onchange=()=>{document.documentElement.dataset.theme=r.value;setup();if(res)play(false)});
+document.querySelectorAll('[name=unit]').forEach(r=>r.onchange=()=>{unit=r.value;$('un').textContent=unit==='mi'?'miles':'km';roads();if(res)optimize()});
+document.querySelectorAll('[name=pref]').forEach(r=>r.onchange=()=>{pref=r.value;rebuild();if(res)optimize()});
+load();chips();roads();showPage('dashboard');
+</script>
+</body>
+</html>
